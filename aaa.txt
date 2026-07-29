@@ -1,0 +1,7 @@
+cd ~/yolov5
+
+/usr/src/tensorrt/bin/trtexec \
+  --onnx=yolov5n.onnx \
+  --saveEngine=yolov5n_fp16.engine \
+  --fp16 \
+  --workspace=1024
