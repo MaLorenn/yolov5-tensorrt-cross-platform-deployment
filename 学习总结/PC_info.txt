@@ -1,0 +1,42 @@
+========== PC Environment ==========
+
+OS:
+Ubuntu 22.04.5 LTS
+
+GPU:
+NVIDIA GeForce RTX 4060 Laptop GPU
+
+GPU Memory:
+8GB
+
+NVIDIA Driver:
+580.159.03
+
+CUDA Version (driver):
+13.0
+
+CUDA Toolkit:
+Not installed
+
+Python:
+3.10.20
+
+PyTorch:
+2.13.0+cu130
+
+PyTorch CUDA:
+13.0
+
+ONNX Runtime:
+1.23.2
+
+ONNX Runtime Providers:
+TensorrtExecutionProvider
+CUDAExecutionProvider
+CPUExecutionProvider
+
+TensorRT:
+10.3.0
+
+TensorRT Package:
+tensorrt-cu12

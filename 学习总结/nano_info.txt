@@ -1,0 +1,261 @@
+Jetson Nano 第1—2天环境验证结论
+
+一、系统环境
+
+设备：
+NVIDIA Jetson Nano 4GB
+
+系统：
+Ubuntu 18.04.6 LTS
+
+L4T：
+R32.4.4
+
+内核：
+4.9.140-tegra
+
+架构：
+ARM64 / aarch64
+
+结论：
+当前系统属于较老的 JetPack 4.x 软件栈，但可以继续用于 TensorRT 部署。不要随意升级 Ubuntu、CUDA 或 TensorRT，以免破坏现有环境。
+
+二、CUDA 与 TensorRT
+
+CUDA：
+10.2
+
+nvcc：
+10.2.89
+
+TensorRT：
+7.1.3.0
+
+trtexec 路径：
+
+/usr/src/tensorrt/bin/trtexec
+
+结论：
+CUDA 和 TensorRT 均安装正常，可以用于后续 ONNX 模型转换和 TensorRT 推理。
+
+三、Python 环境
+
+默认 python3：
+
+/home/nano/.pyenv/shims/python3
+
+默认 Python 版本：
+
+3.8.19
+
+系统 Python：
+
+/usr/bin/python3
+
+系统 Python 版本：
+
+3.6.9
+
+TensorRT Python 绑定只适用于系统 Python 3.6。
+
+后续运行 TensorRT Python 程序时应使用：
+
+/usr/bin/python3 程序名.py
+
+不要直接使用：
+
+python3 程序名.py
+
+否则可能无法导入 tensorrt。
+
+四、OpenCV 环境
+
+Python OpenCV：
+
+3.2.0
+
+C++ OpenCV：
+
+4.1.1
+
+结论：
+OpenCV 环境可用。后续正式 Jetson 推理程序建议使用 C++、OpenCV 4.1.1、TensorRT Runtime 和 CMake。
+
+五、摄像头
+
+摄像头设备：
+
+/dev/video0
+
+设备名称：
+
+USB 2.0 Camera
+
+测试结果：
+
+摄像头可以被 OpenCV 正常打开并读取图像。
+
+分辨率：
+
+640 × 480
+
+帧率：
+
+约 30.5 FPS
+
+测试图片：
+
+/home/nano/camera_test.jpg
+
+结论：
+USB 摄像头工作正常，可以用于后续实时目标检测。
+
+六、内存与 Swap
+
+物理内存：
+
+约 3.9 GB
+
+当前可用内存：
+
+约 1.1 GB
+
+Swap：
+
+约 11 至 12 GB
+
+Swap 主要由以下部分组成：
+
+/mnt/swapfile：6 GB
+
+/var/swapfile：4 GB
+
+4 个 zram：合计约 2 GB
+
+结论：
+当前 Swap 容量较充足，能够降低编译程序或构建 TensorRT Engine 时内存不足的风险，暂时不需要调整。
+
+七、磁盘空间
+
+根分区总容量：
+
+约 117 GB
+
+根分区可用：
+
+约 65 GB
+
+外接存储总容量：
+
+约 58 GB
+
+外接存储可用：
+
+约 55 GB
+
+结论：
+磁盘空间充足，可以保存 ONNX、TensorRT Engine、源码、测试图片、视频和性能日志。
+
+八、系统监控
+
+tegrastats 可以正常运行。
+
+能够监控：
+
+CPU 占用率
+
+GPU 占用率
+
+内存和 Swap
+
+CPU、GPU 温度
+
+CPU、GPU 功耗
+
+结论：
+后续可以使用 tegrastats 记录 TensorRT 推理过程中的负载、温度、内存和功耗。
+
+九、与 PC 端的兼容方式
+
+PC 和 Jetson Nano 的 CUDA、TensorRT、GPU 架构和 CPU 架构不同。
+
+PC 生成的 TensorRT Engine 不能直接复制到 Jetson Nano。
+
+正确流程：
+
+PC：
+
+PyTorch 模型
+→ 导出 ONNX
+→ 验证 ONNX
+
+Jetson Nano：
+
+接收 ONNX
+→ 使用 TensorRT 7.1.3 重新构建 Engine
+→ 运行 Jetson 专用推理程序
+
+可以直接传输：
+
+ONNX 模型
+
+测试图片和视频
+
+类别文件
+
+配置文件
+
+通用 C++ 源码
+
+不能直接复制：
+
+PC 生成的 .engine 文件
+
+PC 上的 CUDA 和 TensorRT 软件包
+
+PC 端 TensorRT 10 专用推理代码
+
+十、后续模型导出建议
+
+为了兼容 Jetson Nano 的 TensorRT 7.1.3，建议 PC 端导出 YOLOv5n ONNX 时使用：
+
+batch size = 1
+
+固定输入尺寸
+
+ONNX opset = 12
+
+优先使用 640 × 640
+
+性能不足时再测试 416 × 416 或 320 × 320
+
+暂时不要把 NMS 集成进 ONNX
+
+先验证 FP32，再测试 FP16
+
+十一、最终结论
+
+Jetson Nano 当前环境可以继续用于后续 YOLOv5n TensorRT 部署。
+
+已经确认：
+
+CUDA 正常
+
+TensorRT 正常
+
+trtexec 正常
+
+TensorRT Python 绑定正常
+
+OpenCV 正常
+
+USB 摄像头正常
+
+内存与 Swap 足够
+
+磁盘空间足够
+
+系统性能监控正常
+
+第1—2天 Jetson Nano 环境验证任务已完成。
+

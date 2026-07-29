@@ -1,0 +1,433 @@
+Jetson Nano TensorRT 推理优化项目
+第5—6天：PC端 TensorRT 部署与性能测试结论
+
+一、测试平台
+
+操作系统：
+Ubuntu 22.04.5 LTS
+
+GPU：
+NVIDIA GeForce RTX 4060 Laptop GPU
+
+显存：
+8 GB
+
+NVIDIA Driver：
+580.159.03
+
+CUDA Driver Version：
+13.0
+
+Python：
+3.10.20
+
+PyTorch：
+2.13.0+cu130
+
+ONNX Runtime：
+1.23.2
+
+TensorRT：
+10.3.0
+
+模型：
+YOLOv5n
+
+输入尺寸：
+1 × 3 × 640 × 640
+
+输出尺寸：
+1 × 25200 × 85
+
+二、TensorRT Engine 构建结果
+
+成功使用 TensorRT Python API，将 yolov5n.onnx 分别构建为 FP32 和 FP16 Engine。
+
+FP32 Engine：
+
+文件名：
+yolov5n_fp32.engine
+
+文件大小：
+约 10.45 MiB
+
+构建耗时：
+约 48.46 秒
+
+构建时 GPU 峰值内存：
+约 213 MiB
+
+构建与序列化时 CPU 内存峰值：
+约 3937 MiB
+
+FP16 Engine：
+
+文件名：
+yolov5n_fp16.engine
+
+文件大小：
+约 5.91 MiB
+
+构建耗时：
+约 171.4 秒
+
+构建时 GPU 峰值内存：
+约 213 MiB
+
+构建与序列化时 CPU 内存峰值：
+约 4136 MiB
+
+结论：
+
+FP16 Engine 文件大小相比 FP32 Engine 减少约 43%。
+
+FP16 Engine 构建时间比 FP32 更长，但 Engine 构建时间不代表实际推理时间。
+
+三、Engine 输入输出信息
+
+FP32 和 FP16 Engine 均可正常加载。
+
+输入张量：
+
+名称：
+images
+
+模式：
+TensorIOMode.INPUT
+
+形状：
+1 × 3 × 640 × 640
+
+数据类型：
+FP32
+
+输出张量：
+
+名称：
+output0
+
+模式：
+TensorIOMode.OUTPUT
+
+形状：
+1 × 25200 × 85
+
+数据类型：
+FP32
+
+虽然 FP16 Engine 的输入输出接口仍然显示为 FP32，但 TensorRT 内部可使用 FP16 计算。
+
+四、TensorRT 纯推理性能
+
+测试条件：
+
+预热次数：
+20次
+
+正式测试次数：
+100次
+
+测试内容：
+仅统计模型推理时间，不包含图片读取、预处理、CPU-GPU数据传输、NMS、绘框和显示。
+
+TensorRT FP32：
+
+平均推理时间：
+1.258 ms
+
+P95推理时间：
+1.262 ms
+
+理论吞吐率：
+794.82 FPS
+
+TensorRT FP16：
+
+平均推理时间：
+0.659 ms
+
+P95推理时间：
+0.708 ms
+
+理论吞吐率：
+1516.32 FPS
+
+结论：
+
+FP16 平均推理延迟相比 FP32 降低约 47.6%。
+
+FP16 推理速度约为 FP32 的 1.91 倍。
+
+五、FP32 与 FP16 原始输出误差
+
+随机输入测试结果：
+
+最大绝对误差：
+2.7889
+
+平均绝对误差：
+0.003413
+
+P95绝对误差：
+0.000800
+
+真实 bus.jpg 图片测试结果：
+
+最大绝对误差：
+5.1844
+
+平均绝对误差：
+0.003600
+
+P95绝对误差：
+0.001565
+
+FP32 和 FP16 输出均未出现 NaN 或 Inf。
+
+结论：
+
+FP16 与 FP32 的绝大多数原始输出数值非常接近。
+
+少量较大的最大绝对误差可能出现在坐标、宽度或高度等较大数值上，不能仅根据最大误差判断最终检测结果是否发生变化。
+
+六、真实图片预处理
+
+测试图片：
+
+data/images/bus.jpg
+
+原始图片形状：
+
+1080 × 810 × 3
+
+模型输入形状：
+
+1 × 3 × 640 × 640
+
+缩放比例：
+
+0.5925925926
+
+填充量：
+
+left = 80
+
+top = 0
+
+图片首先由 810 × 1080 等比例缩放为 480 × 640，然后左右各填充80像素，最终得到640 × 640的模型输入。
+
+预处理流程：
+
+BGR转RGB
+
+HWC转CHW
+
+uint8转float32
+
+像素值由0～255归一化到0～1
+
+增加batch维度
+
+最终得到1 × 3 × 640 × 640输入张量。
+
+七、FP32 与 FP16 最终检测结果
+
+置信度阈值：
+
+0.25
+
+NMS IoU阈值：
+
+0.45
+
+FP32：
+
+置信度筛选后候选框数量：
+41
+
+NMS后最终检测数量：
+4
+
+检测结果：
+
+person，置信度0.823178
+
+person，置信度0.815853
+
+person，置信度0.676137
+
+bus，置信度0.526017
+
+FP16：
+
+置信度筛选后候选框数量：
+41
+
+NMS后最终检测数量：
+4
+
+检测结果：
+
+person，置信度0.822620
+
+person，置信度0.815076
+
+person，置信度0.676270
+
+bus，置信度0.523030
+
+结论：
+
+FP32 和 FP16 的候选框数量一致。
+
+NMS 后最终检测数量一致。
+
+检测类别完全一致，均为3个person和1个bus。
+
+检测框坐标差异通常在零点几像素范围内。
+
+置信度仅存在轻微变化。
+
+FP16 对最终检测结果没有产生明显影响。
+
+八、不同推理后端统一性能对比
+
+统一测试条件：
+
+输入尺寸：
+1 × 3 × 640 × 640
+
+预热次数：
+20次
+
+测试次数：
+100次
+
+PyTorch CUDA FP32：
+
+平均推理时间：
+2.716 ms
+
+P95推理时间：
+2.950 ms
+
+理论吞吐率：
+368.16 FPS
+
+ONNX Runtime CUDA：
+
+平均推理时间：
+4.066 ms
+
+P95推理时间：
+4.442 ms
+
+理论吞吐率：
+245.96 FPS
+
+TensorRT FP32：
+
+平均推理时间：
+1.169 ms
+
+P95推理时间：
+1.172 ms
+
+理论吞吐率：
+855.63 FPS
+
+TensorRT FP16：
+
+平均推理时间：
+0.657 ms
+
+P95推理时间：
+0.664 ms
+
+理论吞吐率：
+1521.77 FPS
+
+九、性能分析
+
+TensorRT FP32 相比 PyTorch CUDA FP32：
+
+加速约：
+2.32倍
+
+TensorRT FP16 相比 PyTorch CUDA FP32：
+
+加速约：
+4.13倍
+
+TensorRT FP16 相比 TensorRT FP32：
+
+加速约：
+1.78倍
+
+TensorRT FP16 相比 TensorRT FP32：
+
+平均延迟降低约：
+43.8%
+
+ONNX Runtime CUDA 在当前测试中慢于 PyTorch CUDA。
+
+主要原因可能包括：
+
+ONNX Runtime使用普通session.run接口。
+
+输入为CPU端NumPy数组，需要传输到GPU。
+
+输出需要返回CPU。
+
+测试时间包含部分运行时调度和数据传输开销。
+
+PyTorch和TensorRT使用CUDA Event测试，更接近GPU内部推理时间。
+
+因此，ONNX Runtime测试结果与PyTorch、TensorRT不是完全相同口径的纯GPU计算对比，但仍能反映普通session.run方式下的实际调用性能。
+
+十、当前结论
+
+YOLOv5n ONNX模型已成功转换为TensorRT FP32和FP16 Engine。
+
+FP32和FP16 Engine均可正常加载和推理。
+
+TensorRT FP32相比PyTorch CUDA FP32获得明显加速。
+
+TensorRT FP16性能最好，平均纯推理延迟约0.657 ms。
+
+TensorRT FP16相比PyTorch CUDA FP32加速约4.13倍。
+
+FP16 Engine文件更小，推理更快。
+
+FP16和FP32在真实图片上的检测数量、类别、检测框和置信度基本一致。
+
+当前PC端推荐使用TensorRT FP16进行后续实时推理和性能测试。
+
+十一、第5—6天任务完成情况
+
+已完成：
+
+YOLOv5n ONNX模型解析
+
+TensorRT FP32 Engine构建
+
+TensorRT FP16 Engine构建
+
+Engine输入输出检查
+
+FP32和FP16纯推理测速
+
+FP32和FP16原始输出误差分析
+
+真实图片letterbox预处理
+
+置信度筛选与NMS后处理
+
+检测框恢复至原图
+
+FP32和FP16最终检测结果比较
+
+PyTorch、ONNX Runtime和TensorRT统一性能对比
+
+第5—6天PC端TensorRT部署与性能测试任务已完成。
+
